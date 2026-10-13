@@ -1,0 +1,2 @@
+# Always use LF line endings so Prettier checks pass on Windows, Mac, and Linux
+* text=auto eol=lf
