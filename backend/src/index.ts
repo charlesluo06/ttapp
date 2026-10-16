@@ -1,9 +1,11 @@
+import cookieParser from "cookie-parser";
 import express from "express";
 import { healthRouter } from "./common/health.ts";
 import { authRouter } from "./features/auth/routes.ts";
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
 // Each feature folder in src/features/ exports a router that gets mounted here.
 app.use("/api/health", healthRouter);

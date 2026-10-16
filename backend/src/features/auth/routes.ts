@@ -31,3 +31,29 @@ authRouter.get("/google", (_req, res) => {
   });
   res.redirect(url);
 });
+
+// GET /api/auth/google/callback: Google sends the browser back here after sign-in.
+// Step 1 of 2: confirm this browser started the login. Redeeming the code comes next.
+authRouter.get("/google/callback", (req, res) => {
+  const savedState = req.cookies[STATE_COOKIE];
+  // One use only: the cookie is deleted whether or not the check passes.
+  res.clearCookie(STATE_COOKIE, { path: STATE_COOKIE_PATH });
+
+  const { state, code, error } = req.query;
+  if (error) {
+    // For example the member pressed Cancel on Google's page.
+    res.status(400).send("Sign-in was cancelled.");
+    return;
+  }
+  if (typeof state !== "string" || !savedState || state !== savedState) {
+    res.status(400).send("Sign-in failed. Please try again.");
+    return;
+  }
+  if (typeof code !== "string") {
+    res.status(400).send("Sign-in failed. Please try again.");
+    return;
+  }
+
+  // Temporary: proves the state check works. Replaced when the code is redeemed.
+  res.send("State OK. Code received.");
+});
