@@ -110,12 +110,8 @@
           "name": "member_roles_member_id_members_id_fk",
           "tableFrom": "member_roles",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -123,12 +119,8 @@
           "name": "member_roles_role_id_roles_id_fk",
           "tableFrom": "member_roles",
           "tableTo": "roles",
-          "columnsFrom": [
-            "role_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["role_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -138,10 +130,7 @@
         "member_roles_once": {
           "name": "member_roles_once",
           "nullsNotDistinct": false,
-          "columns": [
-            "member_id",
-            "role_id"
-          ]
+          "columns": ["member_id", "role_id"]
         }
       },
       "policies": {},
@@ -198,9 +187,7 @@
         "members_email_unique": {
           "name": "members_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -261,12 +248,8 @@
           "name": "posts_author_id_members_id_fk",
           "tableFrom": "posts",
           "tableTo": "members",
-          "columnsFrom": [
-            "author_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["author_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -323,12 +306,8 @@
           "name": "push_tokens_member_id_members_id_fk",
           "tableFrom": "push_tokens",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -338,9 +317,7 @@
         "push_tokens_token_unique": {
           "name": "push_tokens_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -372,9 +349,7 @@
         "roles_name_unique": {
           "name": "roles_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -424,12 +399,8 @@
           "name": "rsvps_post_id_posts_id_fk",
           "tableFrom": "rsvps",
           "tableTo": "posts",
-          "columnsFrom": [
-            "post_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["post_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -437,12 +408,8 @@
           "name": "rsvps_member_id_members_id_fk",
           "tableFrom": "rsvps",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -452,10 +419,7 @@
         "rsvps_once": {
           "name": "rsvps_once",
           "nullsNotDistinct": false,
-          "columns": [
-            "post_id",
-            "member_id"
-          ]
+          "columns": ["post_id", "member_id"]
         }
       },
       "policies": {},
@@ -536,12 +500,8 @@
           "name": "sessions_member_id_members_id_fk",
           "tableFrom": "sessions",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -551,9 +511,7 @@
         "sessions_token_hash_unique": {
           "name": "sessions_token_hash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token_hash"
-          ]
+          "columns": ["token_hash"]
         }
       },
       "policies": {},
@@ -608,12 +566,8 @@
           "name": "vote_responses_vote_id_votes_id_fk",
           "tableFrom": "vote_responses",
           "tableTo": "votes",
-          "columnsFrom": [
-            "vote_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["vote_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -621,12 +575,8 @@
           "name": "vote_responses_member_id_members_id_fk",
           "tableFrom": "vote_responses",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -636,10 +586,7 @@
         "vote_responses_once": {
           "name": "vote_responses_once",
           "nullsNotDistinct": false,
-          "columns": [
-            "vote_id",
-            "member_id"
-          ]
+          "columns": ["vote_id", "member_id"]
         }
       },
       "policies": {},

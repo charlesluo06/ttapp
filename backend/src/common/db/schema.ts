@@ -185,7 +185,10 @@ export const sessions = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (t) => [
-    check("sessions_expires_after_created", sql`${t.expiresAt} > ${t.createdAt}`),
+    check(
+      "sessions_expires_after_created",
+      sql`${t.expiresAt} > ${t.createdAt}`,
+    ),
     // Sign out one member everywhere: delete by member_id.
     index("sessions_member_id_idx").on(t.memberId),
     // The cleanup job deletes expired rows.
