@@ -1,0 +1,2 @@
+# Every task goes through the Task form so it has a goal, files, and a "done" checklist.
+blank_issues_enabled: false
