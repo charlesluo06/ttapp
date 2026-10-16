@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { Router } from "express";
+import { createSession, setSessionCookie } from "../../common/sessions.ts";
 import { getGoogleClient, redeemCode } from "./google.ts";
 import { findActiveMemberByEmail, recordFirstLogin } from "./members.ts";
 
@@ -35,7 +36,7 @@ authRouter.get("/google", (_req, res) => {
 
 // GET /api/auth/google/callback: Google sends the browser back here after sign-in.
 // Confirms this browser started the login, redeems the code, and checks the member list.
-// Creating the session comes next.
+// Then starts a session and sends the member into the app.
 authRouter.get("/google/callback", async (req, res) => {
   const savedState = req.cookies[STATE_COOKIE];
   // One use only: the cookie is deleted whether or not the check passes.
@@ -81,6 +82,7 @@ authRouter.get("/google/callback", async (req, res) => {
     await recordFirstLogin(member.id, identity.name);
   }
 
-  // Temporary: proves sign-in works end to end. Replaced when the session is created.
-  res.send(`Signed in as ${member.email}. The session comes next.`);
+  const { token, expiresAt } = await createSession(member.id);
+  setSessionCookie(res, token, expiresAt);
+  res.redirect("/"); // back into the app
 });
