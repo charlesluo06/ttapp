@@ -22,3 +22,28 @@ export function getGoogleClient(): OAuth2Client {
   });
   return client;
 }
+
+export type GoogleIdentity = { email: string; name: string | undefined };
+
+// Trades the one-time code for who just signed in. Throws if Google rejects the code,
+// the token wasn't issued for this app, or the email is missing or unverified.
+export async function redeemCode(code: string): Promise<GoogleIdentity> {
+  const googleClient = getGoogleClient();
+  const { tokens } = await googleClient.getToken(code);
+  if (!tokens.id_token) {
+    throw new Error("Google did not return an ID token");
+  }
+
+  const ticket = await googleClient.verifyIdToken({
+    idToken: tokens.id_token,
+    // Without an audience the library skips this check, so always pass it.
+    audience: requireEnv("GOOGLE_CLIENT_ID"),
+  });
+  const payload = ticket.getPayload();
+  if (!payload?.email || !payload.email_verified) {
+    throw new Error("Google email is missing or not verified");
+  }
+
+  // Members are stored with normalized emails, so match the same way.
+  return { email: payload.email.trim().toLowerCase(), name: payload.name };
+}
