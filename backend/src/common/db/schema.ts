@@ -8,6 +8,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  index,
   integer,
   pgTable,
   text,
@@ -166,6 +167,31 @@ export const pushTokens = pgTable("push_tokens", {
   token: text("token").notNull().unique(),
   createdAt: createdAt(),
 }).enableRLS();
+
+// Login sessions. The cookie holds a long random token; only its SHA-256 hash is stored here,
+// so reading this table (a teammate, a backup) can't be used to sign in as someone else.
+// expires_at slides: each request pushes it 30 days out.
+// Code-enforced (not DB): removing a member also deletes their sessions, and the per-request
+// lookup rejects anyone with removed_at set.
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: id(),
+    tokenHash: text("token_hash").notNull().unique(),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    createdAt: createdAt(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    check("sessions_expires_after_created", sql`${t.expiresAt} > ${t.createdAt}`),
+    // Sign out one member everywhere: delete by member_id.
+    index("sessions_member_id_idx").on(t.memberId),
+    // The cleanup job deletes expired rows.
+    index("sessions_expires_at_idx").on(t.expiresAt),
+  ],
+).enableRLS();
 
 // When each scheduled job last ran, so a missed run can catch up.
 export const jobRuns = pgTable("job_runs", {
