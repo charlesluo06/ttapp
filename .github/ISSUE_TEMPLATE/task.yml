@@ -1,0 +1,35 @@
+name: Task
+description: A small piece of work for one person, about a day or less.
+title: "Short task name"
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should exist when this is done, and why? One or two sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where to work
+      description: The files or folders to change, for example `backend/src/features/posts/`.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: A checklist. When every box is ticked, the task is finished.
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: links
+    attributes:
+      label: Links
+      description: The Team Spec section, the Figma frame, or related tasks.
+    validations:
+      required: false
