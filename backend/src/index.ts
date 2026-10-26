@@ -1,7 +1,10 @@
 import cookieParser from "cookie-parser";
 import express from "express";
 import { healthRouter } from "./common/health.ts";
+import { assertVotePrivacy } from "./common/permissions.ts";
 import { authRouter } from "./features/auth/routes.ts";
+
+assertVotePrivacy();
 
 const app = express();
 app.use(express.json());
