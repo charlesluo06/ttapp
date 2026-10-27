@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { Router } from "express";
-import type { MeResponse } from "@ttapp/shared";
+import type { Response } from "express";
+import type { MeResponse, SignInError } from "@ttapp/shared";
 import { requireLogin } from "../../common/auth.ts";
 import {
   SESSION_COOKIE,
@@ -18,6 +19,11 @@ const STATE_COOKIE_PATH = "/api/auth";
 const STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
 export const authRouter = Router();
+
+// Sends the browser back to the sign-in screen, which shows a message for the error code.
+function failSignIn(res: Response, error: SignInError) {
+  res.redirect(`/sign-in?error=${error}`);
+}
 
 // GET /api/auth/google: start sign-in. Remembers a random `state` in a short-lived cookie,
 // then sends the browser to Google. The callback checks the cookie against what comes back.
@@ -53,15 +59,15 @@ authRouter.get("/google/callback", async (req, res) => {
   const { state, code, error } = req.query;
   if (error) {
     // For example the member pressed Cancel on Google's page.
-    res.status(400).send("Sign-in was cancelled.");
+    failSignIn(res, "cancelled");
     return;
   }
   if (typeof state !== "string" || !savedState || state !== savedState) {
-    res.status(400).send("Sign-in failed. Please try again.");
+    failSignIn(res, "failed");
     return;
   }
   if (typeof code !== "string") {
-    res.status(400).send("Sign-in failed. Please try again.");
+    failSignIn(res, "failed");
     return;
   }
 
@@ -74,25 +80,32 @@ authRouter.get("/google/callback", async (req, res) => {
       "Google sign-in failed:",
       err instanceof Error ? err.message : "unknown error",
     );
-    res.status(400).send("Sign-in failed. Please try again.");
+    failSignIn(res, "failed");
     return;
   }
 
-  const member = await findActiveMemberByEmail(identity.email);
-  if (!member) {
-    // Same answer for "never added" and "removed", so it doesn't reveal which.
-    res
-      .status(403)
-      .send("This email isn't on the member list. Ask an officer to add you.");
-    return;
-  }
-  if (!member.firstLoginAt) {
-    await recordFirstLogin(member.id, identity.name);
-  }
+  // The steps below use the database, so a database problem lands here, not in a raw 500 page.
+  try {
+    const member = await findActiveMemberByEmail(identity.email);
+    if (!member) {
+      // Same answer for "never added" and "removed", so it doesn't reveal which.
+      failSignIn(res, "not_member");
+      return;
+    }
+    if (!member.firstLoginAt) {
+      await recordFirstLogin(member.id, identity.name);
+    }
 
-  const { token, expiresAt } = await createSession(member.id);
-  setSessionCookie(res, token, expiresAt);
-  res.redirect("/"); // back into the app
+    const { token, expiresAt } = await createSession(member.id);
+    setSessionCookie(res, token, expiresAt);
+    res.redirect("/"); // back into the app
+  } catch (err) {
+    console.error(
+      "Sign-in failed after Google:",
+      err instanceof Error ? err.message : "unknown error",
+    );
+    failSignIn(res, "server_error");
+  }
 });
 
 // GET /api/auth/me: who is signed in? The session cookie is HttpOnly, so the frontend can't

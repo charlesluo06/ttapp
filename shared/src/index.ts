@@ -16,3 +16,10 @@ export type HealthResponse = {
   status: "ok";
   time: string; // ISO timestamp, e.g. "2026-10-13T18:30:00.000Z"
 };
+
+/** Why a sign-in failed. The backend callback redirects to /sign-in?error=<code>. */
+export type SignInError =
+  | "cancelled" // pressed Cancel on Google's page
+  | "failed" // Google's answer could not be trusted or redeemed
+  | "not_member" // the email is not on the member list
+  | "server_error"; // our side broke, for example the database is down
