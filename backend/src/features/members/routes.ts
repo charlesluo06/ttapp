@@ -4,13 +4,14 @@ import type {
   MembersResponse,
   Role,
 } from "@ttapp/shared";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 import { requireLogin } from "../../common/auth.ts";
 import { db } from "../../common/db/client.ts";
 import { memberRoles, members, roles } from "../../common/db/schema.ts";
-import { requirePermission } from "../../common/permissions.ts";
+import { can, requirePermission } from "../../common/permissions.ts";
+import { deleteSessionsForMember } from "../../common/sessions.ts";
 import { validateBody } from "../../common/validate.ts";
 
 export const membersRouter = Router();
@@ -110,5 +111,62 @@ membersRouter.post(
     }
 
     res.status(409).json({ error: "That person is already a member" });
+  },
+);
+
+// DELETE /api/members/:id: removes a member. Nothing is deleted: removed_at is set, so they
+// can't sign in and their posts and history stay. Their roles are cleared, so someone who
+// is restored later starts as a plain member. Safe to repeat: every step can run again.
+membersRouter.delete(
+  "/:id",
+  requireLogin,
+  requirePermission("members.manage"),
+  async (req, res) => {
+    const auth = req.auth;
+    if (!auth) {
+      res.status(401).json({ error: "Not signed in" });
+      return;
+    }
+    const targetId = z.uuid().safeParse(req.params.id);
+    if (!targetId.success) {
+      res.status(404).json({ error: "Member not found" });
+      return;
+    }
+    if (targetId.data === auth.member.id) {
+      res.status(400).json({ error: "You can't remove yourself" });
+      return;
+    }
+
+    const [target] = await db
+      .select({ id: members.id })
+      .from(members)
+      .where(eq(members.id, targetId.data));
+    if (!target) {
+      res.status(404).json({ error: "Member not found" });
+      return;
+    }
+
+    // Officers can remove plain members. Anyone with a granted role needs an admin.
+    const [heldRole] = await db
+      .select({ name: roles.name })
+      .from(memberRoles)
+      .innerJoin(roles, eq(memberRoles.roleId, roles.id))
+      .where(and(eq(memberRoles.memberId, target.id), ne(roles.name, "member")))
+      .limit(1);
+    if (heldRole && !can(auth.roles, "roles.grant")) {
+      res.status(403).json({
+        error: "Only an admin can remove an officer, president or admin",
+      });
+      return;
+    }
+
+    // Removing first cuts them off at once: findSession ignores removed members.
+    await db
+      .update(members)
+      .set({ removedAt: new Date() })
+      .where(and(eq(members.id, target.id), isNull(members.removedAt)));
+    await db.delete(memberRoles).where(eq(memberRoles.memberId, target.id));
+    await deleteSessionsForMember(target.id);
+    res.status(204).end();
   },
 );
