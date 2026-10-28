@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, lt } from "drizzle-orm";
 import type { Response } from "express";
 import { db } from "./db/client.ts";
 import { members, sessions } from "./db/schema.ts";
@@ -60,6 +60,17 @@ export async function deleteSession(token: string) {
 // Cutting someone off: ends every session a member has, on every device.
 export async function deleteSessionsForMember(memberId: string) {
   await db.delete(sessions).where(eq(sessions.memberId, memberId));
+}
+
+// Housekeeping: removes sessions that have already expired and returns how many it removed.
+// Expired rows can't be used to sign in anyway (findSession ignores them), so this only
+// keeps the table from growing.
+export async function deleteExpiredSessions(): Promise<number> {
+  const removed = await db
+    .delete(sessions)
+    .where(lt(sessions.expiresAt, new Date()))
+    .returning({ id: sessions.id });
+  return removed.length;
 }
 
 // Sets (or refreshes) the session cookie. Its lifetime matches the session's expiry.
