@@ -1,6 +1,6 @@
-# Privacy Policy — Chapter Ops App
+# Privacy Policy — Theta Tau Hub
 
-The Chapter Ops App is a private internal tool for our fraternity chapter. It is open only to chapter members whose email has been added to the member list.
+Theta Tau Hub is a private internal tool for our fraternity chapter. It is open only to chapter members whose email has been added to the member list.
 
 ## What we collect
 
@@ -20,7 +20,7 @@ We don't sell your data, share it with advertisers, or use it for anything outsi
 
 ## Where it is stored
 
-Data is stored in a database hosted by Supabase and served by a backend hosted on Render. Only the app's backend can read it.
+Data is stored in a database hosted by Supabase and served by a backend hosted on Render. The website itself is hosted on Vercel. Only the app's backend can read the database.
 
 ## Removal
 

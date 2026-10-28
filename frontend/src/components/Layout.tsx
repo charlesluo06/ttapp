@@ -23,7 +23,7 @@ export default function Layout() {
   return (
     <>
       <header>
-        <strong>TT Ops App</strong>{" "}
+        <strong>Theta Tau Hub</strong>{" "}
         <button type="button" onClick={handleSignOut} disabled={signingOut}>
           Sign out
         </button>

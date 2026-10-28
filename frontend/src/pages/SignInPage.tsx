@@ -30,7 +30,7 @@ export default function SignInPage() {
   return (
     <main className="sign-in">
       <div className="sign-in-card">
-        <h1>TT Ops App</h1>
+        <h1>Theta Tau Hub</h1>
         {message && (
           <p className="sign-in-error" role="alert">
             {message}
