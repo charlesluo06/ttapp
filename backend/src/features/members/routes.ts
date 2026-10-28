@@ -1,10 +1,17 @@
-import type { MemberSummary, MembersResponse, Role } from "@ttapp/shared";
-import { eq } from "drizzle-orm";
+import type {
+  AddMemberResponse,
+  MemberSummary,
+  MembersResponse,
+  Role,
+} from "@ttapp/shared";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { Router } from "express";
+import { z } from "zod";
 import { requireLogin } from "../../common/auth.ts";
 import { db } from "../../common/db/client.ts";
 import { memberRoles, members, roles } from "../../common/db/schema.ts";
 import { requirePermission } from "../../common/permissions.ts";
+import { validateBody } from "../../common/validate.ts";
 
 export const membersRouter = Router();
 
@@ -46,5 +53,62 @@ membersRouter.get(
       }),
     };
     res.json(body);
+  },
+);
+
+// The email is trimmed and lowercased first because the database only accepts that form
+// (members_email_normalized), then checked for a valid address like "name@example.com".
+const addMemberBody = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email("Enter a valid email address")),
+});
+
+// POST /api/members: adds an email to the allowlist so that person can sign in.
+// Adding someone who was removed brings them back (that is how restore works).
+membersRouter.post(
+  "/",
+  requireLogin,
+  requirePermission("members.manage"),
+  validateBody(addMemberBody),
+  async (req, res) => {
+    const { email } = req.body as z.infer<typeof addMemberBody>;
+
+    // Insert first and let the unique email decide, so two officers adding the same
+    // address at the same moment can't both succeed.
+    const [created] = await db
+      .insert(members)
+      .values({ email })
+      .onConflictDoNothing()
+      .returning();
+    if (created) {
+      const body: AddMemberResponse = {
+        id: created.id,
+        email: created.email,
+        restored: false,
+      };
+      res.status(201).json(body);
+      return;
+    }
+
+    // The email already exists. If that person was removed, bring them back.
+    const [restored] = await db
+      .update(members)
+      .set({ removedAt: null })
+      .where(and(eq(members.email, email), isNotNull(members.removedAt)))
+      .returning();
+    if (restored) {
+      const body: AddMemberResponse = {
+        id: restored.id,
+        email: restored.email,
+        restored: true,
+      };
+      res.status(200).json(body);
+      return;
+    }
+
+    res.status(409).json({ error: "That person is already a member" });
   },
 );

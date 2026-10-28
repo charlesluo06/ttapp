@@ -25,6 +25,13 @@ export type MembersResponse = {
   members: MemberSummary[];
 };
 
+/** Response from POST /api/members. restored is true when a removed member came back. */
+export type AddMemberResponse = {
+  id: string;
+  email: string;
+  restored: boolean;
+};
+
 /** Response from GET /api/health, used to check the backend is running. */
 export type HealthResponse = {
   status: "ok";
