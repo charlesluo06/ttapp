@@ -3,6 +3,7 @@ import express from "express";
 import { healthRouter } from "./common/health.ts";
 import { assertVotePrivacy } from "./common/permissions.ts";
 import { authRouter } from "./features/auth/routes.ts";
+import { jobsRouter } from "./features/jobs/routes.ts";
 
 assertVotePrivacy();
 
@@ -13,6 +14,7 @@ app.use(cookieParser());
 // Each feature folder in src/features/ exports a router that gets mounted here.
 app.use("/api/health", healthRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/jobs", jobsRouter);
 
 const port = Number(process.env.PORT) || 3000;
 app.listen(port, () => {
