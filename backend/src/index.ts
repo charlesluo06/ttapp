@@ -4,6 +4,7 @@ import { healthRouter } from "./common/health.ts";
 import { assertVotePrivacy } from "./common/permissions.ts";
 import { authRouter } from "./features/auth/routes.ts";
 import { jobsRouter } from "./features/jobs/routes.ts";
+import { membersRouter } from "./features/members/routes.ts";
 
 assertVotePrivacy();
 
@@ -15,6 +16,7 @@ app.use(cookieParser());
 app.use("/api/health", healthRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/jobs", jobsRouter);
+app.use("/api/members", membersRouter);
 
 const port = Number(process.env.PORT) || 3000;
 app.listen(port, () => {

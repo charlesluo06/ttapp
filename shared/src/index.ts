@@ -11,6 +11,20 @@ export type MeResponse = {
   roles: Role[];
 };
 
+/** One row of the member list. Removed members stay in the list with removedAt set. */
+export type MemberSummary = {
+  id: string;
+  email: string;
+  name: string | null; // null until their first sign-in
+  roles: Role[]; // an active member always holds "member"; the rest are granted
+  removedAt: string | null; // ISO timestamp, or null while they are an active member
+};
+
+/** Response from GET /api/members: everyone ever added, active and removed. */
+export type MembersResponse = {
+  members: MemberSummary[];
+};
+
 /** Response from GET /api/health, used to check the backend is running. */
 export type HealthResponse = {
   status: "ok";
