@@ -4,8 +4,17 @@ import type {
   MembersResponse,
   Role,
 } from "@ttapp/shared";
-import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
+import {
+  TransactionRollbackError,
+  and,
+  count,
+  eq,
+  isNotNull,
+  isNull,
+  ne,
+} from "drizzle-orm";
 import { Router } from "express";
+import type { Request, Response } from "express";
 import { z } from "zod";
 import { requireLogin } from "../../common/auth.ts";
 import { db } from "../../common/db/client.ts";
@@ -114,6 +123,49 @@ membersRouter.post(
   },
 );
 
+// What a change needs from the database: db itself, or the transaction handed to a callback.
+type Writer = Pick<typeof db, "update" | "delete">;
+
+// Runs a change that may take an admin away, and undoes it if no active admin would be left.
+// Returns false when it was undone. Locking the admin role row makes two such changes take
+// turns, so each one counts the admins correctly (two admins can't both step aside).
+async function changeKeepingAnAdmin(
+  change: (writer: Writer) => PromiseLike<unknown>,
+): Promise<boolean> {
+  const adminRoleId = await findRoleId("admin");
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .select({ id: roles.id })
+        .from(roles)
+        .where(eq(roles.id, adminRoleId))
+        .for("update");
+      await change(tx);
+      const [{ admins }] = await tx
+        .select({ admins: count() })
+        .from(memberRoles)
+        .innerJoin(members, eq(memberRoles.memberId, members.id))
+        .where(
+          and(eq(memberRoles.roleId, adminRoleId), isNull(members.removedAt)),
+        );
+      if (admins === 0) tx.rollback(); // undoes the change above
+    });
+    return true;
+  } catch (err) {
+    if (err instanceof TransactionRollbackError) return false;
+    throw err;
+  }
+}
+
+async function findRoleId(name: string) {
+  const [role] = await db
+    .select({ id: roles.id })
+    .from(roles)
+    .where(eq(roles.name, name));
+  if (!role) throw new Error(`Role "${name}" is missing from the roles table`);
+  return role.id;
+}
+
 // DELETE /api/members/:id: removes a member. Nothing is deleted: removed_at is set, so they
 // can't sign in and their posts and history stay. Their roles are cleared, so someone who
 // is restored later starts as a plain member. Safe to repeat: every step can run again.
@@ -147,13 +199,16 @@ membersRouter.delete(
     }
 
     // Officers can remove plain members. Anyone with a granted role needs an admin.
-    const [heldRole] = await db
-      .select({ name: roles.name })
-      .from(memberRoles)
-      .innerJoin(roles, eq(memberRoles.roleId, roles.id))
-      .where(and(eq(memberRoles.memberId, target.id), ne(roles.name, "member")))
-      .limit(1);
-    if (heldRole && !can(auth.roles, "roles.grant")) {
+    const heldRoles = (
+      await db
+        .select({ name: roles.name })
+        .from(memberRoles)
+        .innerJoin(roles, eq(memberRoles.roleId, roles.id))
+        .where(
+          and(eq(memberRoles.memberId, target.id), ne(roles.name, "member")),
+        )
+    ).map((row) => row.name);
+    if (heldRoles.length > 0 && !can(auth.roles, "roles.grant")) {
       res.status(403).json({
         error: "Only an admin can remove an officer, president or admin",
       });
@@ -161,12 +216,118 @@ membersRouter.delete(
     }
 
     // Removing first cuts them off at once: findSession ignores removed members.
-    await db
-      .update(members)
-      .set({ removedAt: new Date() })
-      .where(and(eq(members.id, target.id), isNull(members.removedAt)));
-    await db.delete(memberRoles).where(eq(memberRoles.memberId, target.id));
+    const removeFromList = async (writer: Writer) => {
+      await writer
+        .update(members)
+        .set({ removedAt: new Date() })
+        .where(and(eq(members.id, target.id), isNull(members.removedAt)));
+      await writer
+        .delete(memberRoles)
+        .where(eq(memberRoles.memberId, target.id));
+    };
+    if (heldRoles.includes("admin")) {
+      // Two admins removing each other at once must not leave the chapter with none.
+      if (!(await changeKeepingAnAdmin(removeFromList))) {
+        res.status(409).json({ error: "There must be at least one admin" });
+        return;
+      }
+    } else {
+      await removeFromList(db);
+    }
     await deleteSessionsForMember(target.id);
+    res.status(204).end();
+  },
+);
+
+// "member" is implicit, so only these three can be granted or revoked.
+const grantableRole = z.enum(["officer", "president", "admin"]);
+
+// Reads :id and :role from the URL. On a bad value it sends the error itself and returns
+// undefined, so the caller just stops.
+function readRoleParams(req: Request, res: Response) {
+  const memberId = z.uuid().safeParse(req.params.id);
+  if (!memberId.success) {
+    res.status(404).json({ error: "Member not found" });
+    return undefined;
+  }
+  const role = grantableRole.safeParse(req.params.role);
+  if (!role.success) {
+    res.status(400).json({ error: "Role must be officer, president or admin" });
+    return undefined;
+  }
+  return { memberId: memberId.data, role: role.data };
+}
+
+// PUT /api/members/:id/roles/:role: gives someone a role. Admin only (roles.grant).
+// Granting a role they already hold is fine.
+membersRouter.put(
+  "/:id/roles/:role",
+  requireLogin,
+  requirePermission("roles.grant"),
+  async (req, res) => {
+    const params = readRoleParams(req, res);
+    if (!params) return;
+
+    const [member] = await db
+      .select({ id: members.id, removedAt: members.removedAt })
+      .from(members)
+      .where(eq(members.id, params.memberId));
+    if (!member) {
+      res.status(404).json({ error: "Member not found" });
+      return;
+    }
+    if (member.removedAt) {
+      res
+        .status(409)
+        .json({ error: "That member was removed. Add them again first" });
+      return;
+    }
+
+    await db
+      .insert(memberRoles)
+      .values({ memberId: member.id, roleId: await findRoleId(params.role) })
+      .onConflictDoNothing();
+    res.status(204).end();
+  },
+);
+
+// DELETE /api/members/:id/roles/:role: takes a role away. Admin only (roles.grant).
+// Revoking admin from the last admin is refused, so the chapter can't lock itself out.
+membersRouter.delete(
+  "/:id/roles/:role",
+  requireLogin,
+  requirePermission("roles.grant"),
+  async (req, res) => {
+    const params = readRoleParams(req, res);
+    if (!params) return;
+
+    const [member] = await db
+      .select({ id: members.id })
+      .from(members)
+      .where(eq(members.id, params.memberId));
+    if (!member) {
+      res.status(404).json({ error: "Member not found" });
+      return;
+    }
+
+    const roleId = await findRoleId(params.role);
+    const holdsRole = and(
+      eq(memberRoles.memberId, member.id),
+      eq(memberRoles.roleId, roleId),
+    );
+    if (params.role !== "admin") {
+      await db.delete(memberRoles).where(holdsRole);
+      res.status(204).end();
+      return;
+    }
+
+    const kept = await changeKeepingAnAdmin((writer) =>
+      writer.delete(memberRoles).where(holdsRole),
+    );
+    if (!kept) {
+      res.status(409).json({ error: "There must be at least one admin" });
+      return;
+    }
     res.status(204).end();
   },
 );
