@@ -1,0 +1,36 @@
+# Runs the scheduled backend jobs (keep the database awake, delete expired sessions).
+# It calls POST /api/jobs/run on Render, which also wakes the free instance if it is asleep.
+# Needs the repo secret CRON_SECRET, the same value as CRON_SECRET on Render.
+name: Scheduled jobs
+
+on:
+  schedule:
+    # Once a day at 09:17 UTC. GitHub can start scheduled runs several minutes late.
+    - cron: "17 9 * * *"
+  workflow_dispatch: # the "Run workflow" button in the Actions tab, for testing
+
+permissions:
+  actions: write # only for the re-enable step below
+
+jobs:
+  run-jobs:
+    runs-on: ubuntu-latest
+    steps:
+      # A sleeping Render instance can take a minute to wake, so wait long and retry.
+      - name: Run jobs
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --max-time 120 --retry 3 --retry-delay 20 --retry-all-errors \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://ttapp-dheg.onrender.com/api/jobs/run
+
+      # EXPERIMENT: GitHub turns scheduled workflows off after 60 days without repo activity.
+      # Re-enabling the workflow may restart that clock. Not confirmed, so keep committing
+      # at least every 60 days, and watch for GitHub's warning email.
+      - name: Re-enable this workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable jobs.yml --repo ${{ github.repository }}
