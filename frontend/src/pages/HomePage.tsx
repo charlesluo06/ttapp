@@ -18,7 +18,7 @@ export default function HomePage() {
 
   return (
     <main>
-      <h1>Chapter Ops</h1>
+      <h1>TT Ops App</h1>
       {health && <p>Backend is running (checked at {health.time})</p>}
       {error && <p>Can't reach the backend: {error}</p>}
       {!health && !error && <p>Checking backend…</p>}

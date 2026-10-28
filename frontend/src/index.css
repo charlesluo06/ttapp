@@ -10,3 +10,16 @@ body {
 main {
   padding: 16px;
 }
+
+/* Chapter colors, picked from the logo and banner. */
+:root {
+  color-scheme: light;
+  --maroon-900: #3d0000;
+  --maroon-700: #5c0000;
+  --maroon-500: #7a0c16;
+  --gold-400: #ffc043;
+  --gold-300: #ffd272;
+  --gold-tint: #fff7e3;
+  --line: #c9bebe;
+  --ink: #2a1a1a;
+}

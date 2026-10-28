@@ -34,5 +34,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  return <AuthContext value={state}>{children}</AuthContext>;
+  // Ends the session on the backend, then forgets the member here. If the request fails the
+  // session is still alive, so the state is left alone rather than claiming to be signed out.
+  async function signOut(): Promise<boolean> {
+    try {
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      if (!res.ok) return false;
+    } catch {
+      return false;
+    }
+    setState({ status: "signedOut" });
+    return true;
+  }
+
+  return <AuthContext value={{ ...state, signOut }}>{children}</AuthContext>;
 }
