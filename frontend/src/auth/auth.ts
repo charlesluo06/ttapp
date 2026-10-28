@@ -9,9 +9,16 @@ export type AuthState =
   | { status: "signedIn"; me: MeResponse }
   | { status: "error" };
 
-export const AuthContext = createContext<AuthState>({ status: "loading" });
+// What a screen gets from useAuth(): the state, plus signOut(). signOut returns true when
+// the backend ended the session, and false if the request failed (still signed in).
+export type Auth = AuthState & { signOut: () => Promise<boolean> };
+
+export const AuthContext = createContext<Auth>({
+  status: "loading",
+  signOut: () => Promise.resolve(false),
+});
 
 // Any screen calls this to read the auth state.
-export function useAuth(): AuthState {
+export function useAuth(): Auth {
   return useContext(AuthContext);
 }

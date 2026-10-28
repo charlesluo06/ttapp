@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import { useAuth } from "./auth/auth.ts";
 import type { AuthState } from "./auth/auth.ts";
+import Layout from "./components/Layout.tsx";
 import HomePage from "./pages/HomePage.tsx";
 import SignInPage from "./pages/SignInPage.tsx";
 
@@ -37,13 +38,14 @@ export default function App() {
   return (
     <Routes>
       <Route
-        path="/"
         element={
           <RequireSignIn>
-            <HomePage />
+            <Layout />
           </RequireSignIn>
         }
-      />
+      >
+        <Route path="/" element={<HomePage />} />
+      </Route>
       <Route
         path="/sign-in"
         element={
