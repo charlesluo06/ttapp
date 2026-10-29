@@ -33,6 +33,18 @@ export type AddMemberResponse = {
   restored: boolean;
 };
 
+/** One shared chapter link, shown on the Links page. */
+export type DriveLink = {
+  id: string;
+  label: string;
+  url: string; // always starts with https://
+};
+
+/** Response from GET /api/drive-links: every link, sorted by label. */
+export type DriveLinksResponse = {
+  links: DriveLink[];
+};
+
 /** Response from GET /api/health, used to check the backend is running. */
 export type HealthResponse = {
   status: "ok";
