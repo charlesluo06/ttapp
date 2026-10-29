@@ -33,3 +33,16 @@ export async function addMember(email: string): Promise<AddMemberResult> {
     return { ok: false, message: "Can't reach the server." };
   }
 }
+
+export type RemoveMemberResult = { ok: true } | { ok: false; message: string };
+
+// DELETE /api/members/:id. The backend signs them out and keeps their history.
+export async function removeMember(id: string): Promise<RemoveMemberResult> {
+  try {
+    const res = await fetch(`/api/members/${id}`, { method: "DELETE" });
+    if (res.ok) return { ok: true };
+    return { ok: false, message: await readError(res) };
+  } catch {
+    return { ok: false, message: "Can't reach the server." };
+  }
+}
