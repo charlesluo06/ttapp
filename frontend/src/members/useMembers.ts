@@ -1,15 +1,18 @@
 import type { MemberSummary, MembersResponse } from "@ttapp/shared";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export type MembersState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "loaded"; members: MemberSummary[] };
 
-// Loads the member list once when the screen opens. Includes removed members; the screen
-// decides which to show.
-export function useMembers(): MembersState {
+// Loads the member list when the screen opens, and again whenever reload() is called (after
+// adding or removing someone). The old list stays on screen until the new one arrives.
+// Includes removed members; the screen decides which to show.
+export function useMembers(): { state: MembersState; reload: () => void } {
   const [state, setState] = useState<MembersState>({ status: "loading" });
+  const [version, setVersion] = useState(0);
+  const reload = useCallback(() => setVersion((current) => current + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,7 +39,7 @@ export function useMembers(): MembersState {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [version]);
 
-  return state;
+  return { state, reload };
 }
