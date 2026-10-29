@@ -11,6 +11,18 @@
   --color-gold-tint: #fff7e3;
   --color-line: #c9bebe;
   --color-ink: #2a1a1a;
+
+  /* The intro screen: the colored logo is revealed from the bottom up. "both" keeps the
+     empty starting state until the animation begins. */
+  --animate-intro-fill: intro-fill 1s ease-in-out both;
+  @keyframes intro-fill {
+    from {
+      clip-path: inset(100% 0 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+    }
+  }
 }
 
 /* Short names for plain CSS files (SignInPage.css). Same values, one source. */
