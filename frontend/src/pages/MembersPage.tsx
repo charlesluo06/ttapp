@@ -5,6 +5,7 @@ import { canManageMembers, canRemoveMember } from "../members/access.ts";
 import AddMemberForm from "../members/AddMemberForm.tsx";
 import {
   addMember,
+  eraseMember,
   grantRole,
   removeMember,
   revokeRole,
@@ -85,6 +86,16 @@ function MemberList({
     void run(member, () => addMember(member.email));
   }
 
+  // Permanent. Their email and name are deleted and can't be brought back.
+  function handleErase(member: MemberSummary) {
+    const label = member.name ?? member.email;
+    const ok = window.confirm(
+      `Permanently erase ${label}? Their email and name are deleted and this can't be undone. ` +
+        `Anything they posted or voted stays, under "Former member".`,
+    );
+    if (ok) void run(member, () => eraseMember(member.id));
+  }
+
   return (
     <>
       {error && (
@@ -147,23 +158,41 @@ function MemberList({
               >
                 <div>
                   <p className="font-medium text-ink">
-                    {member.name ?? member.email}
+                    {member.erased
+                      ? "Former member"
+                      : (member.name ?? member.email)}
                   </p>
                   <p className="text-sm text-ink/60">
-                    {member.name ? `${member.email} · ` : ""}
+                    {member.erased
+                      ? "Personal data erased · "
+                      : member.name
+                        ? `${member.email} · `
+                        : ""}
                     Removed{" "}
                     {member.removedAt &&
                       new Date(member.removedAt).toLocaleDateString()}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleRestore(member)}
-                  disabled={busyId !== null}
-                  className={`${smallButton} border-maroon-500 text-maroon-500 hover:bg-gold-tint`}
-                >
-                  Restore
-                </button>
+                {!member.erased && (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleRestore(member)}
+                      disabled={busyId !== null}
+                      className={`${smallButton} border-maroon-500 text-maroon-500 hover:bg-gold-tint`}
+                    >
+                      Restore
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleErase(member)}
+                      disabled={busyId !== null}
+                      className={`${smallButton} border-line text-red-800 hover:bg-red-50`}
+                    >
+                      Erase
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

@@ -18,12 +18,26 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { requireLogin } from "../../common/auth.ts";
 import { db } from "../../common/db/client.ts";
-import { memberRoles, members, roles } from "../../common/db/schema.ts";
+import {
+  memberRoles,
+  members,
+  posts,
+  pushTokens,
+  roles,
+  rsvps,
+  sessions,
+  voteResponses,
+} from "../../common/db/schema.ts";
 import { can, requirePermission } from "../../common/permissions.ts";
 import { deleteSessionsForMember } from "../../common/sessions.ts";
 import { validateBody } from "../../common/validate.ts";
 
 export const membersRouter = Router();
+
+// An erased member keeps an empty row so old posts and votes still add up. Their email is
+// replaced by an address nobody can use, which is also how a row is recognized as erased.
+const ERASED_DOMAIN = "erased.invalid";
+const isErased = (email: string) => email.endsWith(`@${ERASED_DOMAIN}`);
 
 // GET /api/members: everyone ever added, active and removed, with their roles.
 // Removed members are included (removedAt is set) so the page can show and restore them.
@@ -59,6 +73,7 @@ membersRouter.get(
           name: member.name,
           roles: member.removedAt ? granted : ["member", ...granted],
           removedAt: member.removedAt?.toISOString() ?? null,
+          erased: isErased(member.email),
         };
       }),
     };
@@ -366,5 +381,88 @@ membersRouter.delete(
       return;
     }
     res.status(204).end();
+  },
+);
+
+// Does anything they did still point at this member?
+async function hasHistory(
+  tx: Pick<typeof db, "select">,
+  memberId: string,
+): Promise<boolean> {
+  const [post] = await tx
+    .select({ id: posts.id })
+    .from(posts)
+    .where(eq(posts.authorId, memberId))
+    .limit(1);
+  const [rsvp] = await tx
+    .select({ id: rsvps.id })
+    .from(rsvps)
+    .where(eq(rsvps.memberId, memberId))
+    .limit(1);
+  const [vote] = await tx
+    .select({ id: voteResponses.id })
+    .from(voteResponses)
+    .where(eq(voteResponses.memberId, memberId))
+    .limit(1);
+  return Boolean(post || rsvp || vote);
+}
+
+// POST /api/members/:id/erase: clears a REMOVED member's personal data for good. Their
+// sessions, push tokens and roles are deleted. With no history the row is deleted too; with
+// history it stays as an anonymous "former member" so posts, RSVPs and vote totals still add
+// up. Their old email is free afterwards. Safe to repeat.
+membersRouter.post(
+  "/:id/erase",
+  requireLogin,
+  requirePermission("members.manage"),
+  async (req, res) => {
+    const memberId = z.uuid().safeParse(req.params.id);
+    if (!memberId.success) {
+      res.status(404).json({ error: "Member not found" });
+      return;
+    }
+
+    const outcome = await db.transaction(async (tx) => {
+      // Locking the row stops a restore and an erase from both going through.
+      const [target] = await tx
+        .select({
+          id: members.id,
+          email: members.email,
+          removedAt: members.removedAt,
+        })
+        .from(members)
+        .where(eq(members.id, memberId.data))
+        .for("update");
+      if (!target) return "missing" as const;
+      if (!target.removedAt) return "not_removed" as const;
+      if (isErased(target.email)) return "done" as const;
+
+      await tx.delete(sessions).where(eq(sessions.memberId, target.id));
+      await tx.delete(pushTokens).where(eq(pushTokens.memberId, target.id));
+      await tx.delete(memberRoles).where(eq(memberRoles.memberId, target.id));
+      if (await hasHistory(tx, target.id)) {
+        await tx
+          .update(members)
+          .set({
+            email: `erased-${target.id}@${ERASED_DOMAIN}`,
+            name: null,
+            firstLoginAt: null,
+          })
+          .where(eq(members.id, target.id));
+      } else {
+        await tx.delete(members).where(eq(members.id, target.id));
+      }
+      return "done" as const;
+    });
+
+    if (outcome === "missing") {
+      res.status(404).json({ error: "Member not found" });
+    } else if (outcome === "not_removed") {
+      res.status(409).json({
+        error: "Remove them first. Only removed members can be erased",
+      });
+    } else {
+      res.status(204).end();
+    }
   },
 );

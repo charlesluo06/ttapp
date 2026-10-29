@@ -84,3 +84,15 @@ async function changeRole(
     return { ok: false, message: "Can't reach the server." };
   }
 }
+
+// POST /api/members/:id/erase. Permanently clears a removed member's personal data. The
+// backend keeps an anonymous row if they have history (posts, RSVPs, votes).
+export async function eraseMember(id: string): Promise<RemoveMemberResult> {
+  try {
+    const res = await fetch(`/api/members/${id}/erase`, { method: "POST" });
+    if (res.ok) return { ok: true };
+    return { ok: false, message: await readError(res) };
+  } catch {
+    return { ok: false, message: "Can't reach the server." };
+  }
+}
