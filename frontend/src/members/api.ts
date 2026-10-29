@@ -46,3 +46,41 @@ export async function removeMember(id: string): Promise<RemoveMemberResult> {
     return { ok: false, message: "Can't reach the server." };
   }
 }
+
+// The three roles an admin can hand out. "member" is implicit and never changes.
+export type GrantableRole = "officer" | "president" | "admin";
+export const grantableRoles: GrantableRole[] = [
+  "officer",
+  "president",
+  "admin",
+];
+
+// PUT and DELETE /api/members/:id/roles/:role. Admin only. The backend refuses to leave
+// the chapter without an admin and answers 409 with a message.
+export async function grantRole(
+  id: string,
+  role: GrantableRole,
+): Promise<RemoveMemberResult> {
+  return changeRole("PUT", id, role);
+}
+
+export async function revokeRole(
+  id: string,
+  role: GrantableRole,
+): Promise<RemoveMemberResult> {
+  return changeRole("DELETE", id, role);
+}
+
+async function changeRole(
+  method: "PUT" | "DELETE",
+  id: string,
+  role: GrantableRole,
+): Promise<RemoveMemberResult> {
+  try {
+    const res = await fetch(`/api/members/${id}/roles/${role}`, { method });
+    if (res.ok) return { ok: true };
+    return { ok: false, message: await readError(res) };
+  } catch {
+    return { ok: false, message: "Can't reach the server." };
+  }
+}

@@ -3,7 +3,14 @@ import { useState } from "react";
 import { useAuth } from "../auth/auth.ts";
 import { canManageMembers, canRemoveMember } from "../members/access.ts";
 import AddMemberForm from "../members/AddMemberForm.tsx";
-import { addMember, removeMember } from "../members/api.ts";
+import {
+  addMember,
+  grantRole,
+  removeMember,
+  revokeRole,
+} from "../members/api.ts";
+import type { GrantableRole } from "../members/api.ts";
+import RoleChips from "../members/RoleChips.tsx";
 import { useMembers } from "../members/useMembers.ts";
 import type { MembersState } from "../members/useMembers.ts";
 
@@ -26,6 +33,7 @@ function MemberList({
   if (state.status === "loading") return <p>Loading members…</p>;
   if (state.status === "error") return <p role="alert">{state.message}</p>;
 
+  const isAdmin = viewer.roles.includes("admin");
   const active = state.members.filter((member) => !member.removedAt);
   const removed = state.members.filter((member) => member.removedAt);
 
@@ -33,13 +41,20 @@ function MemberList({
   async function run(
     member: MemberSummary,
     action: () => Promise<ActionResult>,
+    changesOwnRoles = false,
   ) {
     setBusyId(member.id);
     setError(null);
     const result = await action();
     setBusyId(null);
-    if (result.ok) onChanged();
-    else setError(result.message);
+    if (!result.ok) {
+      setError(result.message);
+    } else if (changesOwnRoles) {
+      // The header and this page were built from the old roles, so start fresh.
+      window.location.reload();
+    } else {
+      onChanged();
+    }
   }
 
   function handleRemove(member: MemberSummary) {
@@ -48,6 +63,21 @@ function MemberList({
       return;
     }
     void run(member, () => removeMember(member.id));
+  }
+
+  function handleGrant(member: MemberSummary, role: GrantableRole) {
+    const isMe = member.email === viewer.email;
+    void run(member, () => grantRole(member.id, role), isMe);
+  }
+
+  function handleRevoke(member: MemberSummary, role: GrantableRole) {
+    const isMe = member.email === viewer.email;
+    if (role === "admin") {
+      const who = isMe ? "your own" : `${member.name ?? member.email}'s`;
+      const warning = isMe ? " You will lose admin access." : "";
+      if (!window.confirm(`Remove ${who} admin role?${warning}`)) return;
+    }
+    void run(member, () => revokeRole(member.id, role), isMe);
   }
 
   // Restoring is adding the same email again. The backend brings the person back.
@@ -78,16 +108,13 @@ function MemberList({
                     {member.name ? member.email : "Hasn't signed in yet"}
                   </p>
                 </div>
-                <ul className="flex gap-2">
-                  {member.roles.map((role) => (
-                    <li
-                      key={role}
-                      className="rounded-full bg-gold-tint px-2.5 py-0.5 text-xs font-medium text-maroon-500 ring-1 ring-gold-400"
-                    >
-                      {role}
-                    </li>
-                  ))}
-                </ul>
+                <RoleChips
+                  roles={member.roles}
+                  editable={isAdmin}
+                  busy={busyId !== null}
+                  onGrant={(role) => handleGrant(member, role)}
+                  onRevoke={(role) => handleRevoke(member, role)}
+                />
               </div>
               {/* Fixed width, so the cards line up whether or not there is a button. */}
               <div className="w-20 shrink-0">
