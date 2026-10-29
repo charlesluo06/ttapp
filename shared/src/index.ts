@@ -18,6 +18,7 @@ export type MemberSummary = {
   name: string | null; // null until their first sign-in
   roles: Role[]; // an active member always holds "member"; the rest are granted
   removedAt: string | null; // ISO timestamp, or null while they are an active member
+  erased: boolean; // personal data cleared; only the empty row is kept for history
 };
 
 /** Response from GET /api/members: everyone ever added, active and removed. */
