@@ -4,6 +4,7 @@ import { useAuth } from "./auth/auth.ts";
 import type { AuthState } from "./auth/auth.ts";
 import Layout from "./components/Layout.tsx";
 import HomePage from "./pages/HomePage.tsx";
+import MembersPage from "./pages/MembersPage.tsx";
 import SignInPage from "./pages/SignInPage.tsx";
 
 // While we don't know yet, or the backend is unreachable, no screen should guess.
@@ -45,6 +46,7 @@ export default function App() {
         }
       >
         <Route path="/" element={<HomePage />} />
+        <Route path="/admin/members" element={<MembersPage />} />
       </Route>
       <Route
         path="/sign-in"
