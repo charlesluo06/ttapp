@@ -104,21 +104,37 @@
       html {
         background: #5c0000;
       }
+      /* The first frame lives here, not in Tailwind classes: the stylesheet may arrive after
+         the first paint (always on the dev server), and the logo must not sit unstyled in
+         the corner meanwhile. Same look as IntroScreen at its start. */
+      .boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #5c0000;
+      }
+      .boot-logo {
+        width: 14rem;
+        max-width: 60vw;
+      }
+      .boot-logo img {
+        display: block;
+        width: 100%;
+        opacity: 0.6;
+        filter: grayscale(1);
+      }
     </style>
   </head>
   <body>
     <div id="root">
       <!-- What the intro screen shows at its first frame. React replaces it when it starts. -->
-      <div class="fixed inset-0 grid place-items-center bg-maroon-700">
+      <div class="boot">
         <div
-          class="relative w-56 max-w-[60vw]"
+          class="boot-logo"
           style="transform: translateY(calc(var(--status-bar, 0px) / -2))"
         >
-          <img
-            src="/logo.png"
-            alt=""
-            class="block w-full opacity-60 grayscale"
-          />
+          <img src="/logo.png" alt="" />
         </div>
       </div>
     </div>
