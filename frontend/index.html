@@ -83,6 +83,23 @@
       media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
       href="/splash/640x1136.png"
     />
+    <script>
+      // In the installed iPhone app the page starts below the status bar, so the middle of the
+      // page is lower than the middle of the launch image. This measures that gap before the
+      // first paint, so the logo can be shifted up by half of it and stay in the same spot.
+      (function () {
+        var installed =
+          navigator.standalone ||
+          window.matchMedia("(display-mode: standalone)").matches;
+        var gap = screen.height - innerHeight;
+        if (installed && innerHeight > innerWidth && gap > 0 && gap < 100) {
+          document.documentElement.style.setProperty(
+            "--status-bar",
+            gap + "px",
+          );
+        }
+      })();
+    </script>
     <style>
       html {
         background: #5c0000;
@@ -93,7 +110,10 @@
     <div id="root">
       <!-- What the intro screen shows at its first frame. React replaces it when it starts. -->
       <div class="fixed inset-0 grid place-items-center bg-maroon-700">
-        <div class="relative w-56 max-w-[60vw]">
+        <div
+          class="relative w-56 max-w-[60vw]"
+          style="transform: translateY(calc(var(--status-bar, 0px) / -2))"
+        >
           <img
             src="/logo.png"
             alt=""

@@ -36,7 +36,11 @@ export default function IntroScreen() {
         leaving ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
     >
-      <div className="relative w-56 max-w-[60vw]">
+      {/* The shift keeps the logo where the launch image had it (see index.html). */}
+      <div
+        className="relative w-56 max-w-[60vw]"
+        style={{ transform: "translateY(calc(var(--status-bar, 0px) / -2))" }}
+      >
         {/* The gray logo is always there. The colored one is drawn over it and revealed. */}
         <img
           src="/logo.png"
