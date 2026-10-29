@@ -23,6 +23,7 @@
 .sign-in-card h1 {
   margin: 0 0 8px;
   font-size: 1.75rem;
+  font-weight: 700; /* Tailwind's reset makes headings normal weight */
   color: var(--maroon-500);
 }
 
