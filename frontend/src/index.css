@@ -1,25 +1,43 @@
-body {
-  margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
+@import "tailwindcss";
+
+/* Chapter colors, picked from the logo and banner. @theme turns each one into Tailwind
+   classes, for example bg-maroon-700, text-gold-300 and border-line. */
+@theme {
+  --color-maroon-900: #3d0000;
+  --color-maroon-700: #5c0000;
+  --color-maroon-500: #7a0c16;
+  --color-gold-400: #ffc043;
+  --color-gold-300: #ffd272;
+  --color-gold-tint: #fff7e3;
+  --color-line: #c9bebe;
+  --color-ink: #2a1a1a;
 }
 
-main {
-  padding: 16px;
-}
-
-/* Chapter colors, picked from the logo and banner. */
+/* Short names for plain CSS files (SignInPage.css). Same values, one source. */
 :root {
   color-scheme: light;
-  --maroon-900: #3d0000;
-  --maroon-700: #5c0000;
-  --maroon-500: #7a0c16;
-  --gold-400: #ffc043;
-  --gold-300: #ffd272;
-  --gold-tint: #fff7e3;
-  --line: #c9bebe;
-  --ink: #2a1a1a;
+  --maroon-900: var(--color-maroon-900);
+  --maroon-700: var(--color-maroon-700);
+  --maroon-500: var(--color-maroon-500);
+  --gold-400: var(--color-gold-400);
+  --gold-300: var(--color-gold-300);
+  --gold-tint: var(--color-gold-tint);
+  --line: var(--color-line);
+  --ink: var(--color-ink);
+}
+
+/* In the base layer so Tailwind classes can still override them, for example p-0 on a main. */
+@layer base {
+  body {
+    margin: 0;
+    font-family:
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      sans-serif;
+  }
+
+  main {
+    padding: 16px;
+  }
 }
